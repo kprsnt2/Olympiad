@@ -1,4 +1,4 @@
-﻿// Audio service utilizing Web Audio API for zero-latency synthesized sound effects & SpeechSynthesis for voice
+// Audio service utilizing Web Audio API for zero-latency synthesized sound effects & SpeechSynthesis for voice
 
 const MUTE_KEY = 'olympiad_audio_muted_v1';
 
@@ -29,6 +29,13 @@ export function setAudioMuted(muted: boolean): void {
   if (muted && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
+}
+
+export function toggleMute(): boolean {
+  const current = isAudioMuted();
+  const next = !current;
+  setAudioMuted(next);
+  return next;
 }
 
 // 1. Play pleasant ascending chime on correct answer
@@ -65,11 +72,11 @@ export function playSuccessSound(): void {
     osc1.stop(now + 0.5);
     osc2.stop(now + 0.5);
   } catch (e) {
-    console.warn('Audio play failed', e);
+    console.warn('Web Audio error', e);
   }
 }
 
-// 2. Play gentle low tone on incorrect answer
+// 2. Play gentle buzz on incorrect answer
 export function playErrorSound(): void {
   if (isAudioMuted()) return;
   try {
@@ -81,10 +88,10 @@ export function playErrorSound(): void {
     const gainNode = ctx.createGain();
 
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(220, now); // A3
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.25); // E3
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.linearRampToValueAtTime(160, now + 0.25);
 
-    gainNode.gain.setValueAtTime(0.12, now);
+    gainNode.gain.setValueAtTime(0.15, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
     osc.connect(gainNode);
@@ -93,11 +100,11 @@ export function playErrorSound(): void {
     osc.start(now);
     osc.stop(now + 0.3);
   } catch (e) {
-    console.warn('Audio play failed', e);
+    console.warn('Web Audio error', e);
   }
 }
 
-// 3. Play level up victory fanfare
+// 3. Play victory fanfare on medal / level up
 export function playLevelUpSound(): void {
   if (isAudioMuted()) return;
   try {
@@ -106,29 +113,31 @@ export function playLevelUpSound(): void {
 
     const now = ctx.currentTime;
     const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
-    notes.forEach((freq, index) => {
+    
+    notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const start = now + index * 0.1;
+      const startTime = now + i * 0.1;
+      const dur = 0.35;
 
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, start);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
 
-      gain.gain.setValueAtTime(0.2, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+      gain.gain.setValueAtTime(0.18, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(start);
-      osc.stop(start + 0.4);
+      osc.start(startTime);
+      osc.stop(startTime + dur);
     });
   } catch (e) {
-    console.warn('Level up sound failed', e);
+    console.warn('Web Audio error', e);
   }
 }
 
-// 4. Subtle UI click
+// 4. Subtle UI button click sound
 export function playClickSound(): void {
   if (isAudioMuted()) return;
   try {
@@ -141,22 +150,22 @@ export function playClickSound(): void {
 
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, now);
-    osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
 
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.05);
+    osc.stop(now + 0.04);
   } catch (e) {
-    // quiet ignore
+    // Ignore click audio glitch
   }
 }
 
-// 5. Timer alert tick
+// 5. Timer alert tick sound
 export function playTickSound(): void {
   if (isAudioMuted()) return;
   try {
@@ -167,10 +176,9 @@ export function playTickSound(): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(1000, now);
-
-    gain.gain.setValueAtTime(0.03, now);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1200, now);
+    gain.gain.setValueAtTime(0.05, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
 
     osc.connect(gain);
@@ -179,28 +187,37 @@ export function playTickSound(): void {
     osc.start(now);
     osc.stop(now + 0.03);
   } catch (e) {
-    // quiet ignore
+    // Ignore tick audio
   }
 }
 
-// 6. Text-to-Speech kid-friendly voice reader
-export function speakQuestionText(text: string): void {
-  if (isAudioMuted()) return;
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+// 6. SpeechSynthesis kid-friendly voice reader
+export function speakText(text: string): void {
+  if (isAudioMuted() || typeof window === 'undefined' || !window.speechSynthesis) return;
 
-  window.speechSynthesis.cancel();
-  const cleanText = text.replace(/\[.*?\]/g, '').replace(/https?:\/\/\S+/g, '');
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.rate = 0.95;
-  utterance.pitch = 1.1; // friendly, upbeat kid pitch
+  try {
+    window.speechSynthesis.cancel();
+    const cleanText = text
+      .replace(/\$+/g, ' ')
+      .replace(/\\times/g, ' multiplied by ')
+      .replace(/\\div/g, ' divided by ')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 over $2')
+      .replace(/\\sqrt\{([^}]+)\}/g, 'square root of $1')
+      .replace(/[\\_{}^]/g, ' ');
 
-  const voices = window.speechSynthesis.getVoices();
-  const naturalVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Google')));
-  if (naturalVoice) {
-    utterance.voice = naturalVoice;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    utterance.lang = 'en-US';
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn('Speech synthesis not available', e);
   }
+}
 
-  window.speechSynthesis.speak(utterance);
+export function speakQuestionText(text: string): void {
+  speakText(text);
 }
 
 export function stopSpeaking(): void {

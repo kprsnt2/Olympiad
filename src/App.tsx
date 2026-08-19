@@ -1,13 +1,15 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GradeLevel, OlympiadExamId, MockTest, Question, TestAttemptResult, UserProfile } from './types/olympiad';
 import { loadUserProfile, saveUserProfile, addXpToUser, recordTestAttempt } from './services/storageService';
+import { getNonRepeatingQuestions } from './services/questionRotationService';
 import { OLYMPIAD_EXAMS } from './data/olympiadExams';
-import { QUESTION_BANK } from './data/questionBank';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { MascotHero } from './components/dashboard/MascotHero';
 import { SubjectCard } from './components/dashboard/SubjectCard';
 import { DailyChallenge } from './components/dashboard/DailyChallenge';
+import { MomentumSection } from './components/dashboard/MomentumSection';
+import { CoachNovaSection } from './components/dashboard/CoachNovaSection';
 import { BadgesShowcase } from './components/dashboard/BadgesShowcase';
 import { GradeHub } from './components/dashboard/GradeHub';
 import { TestSimulator } from './components/test/TestSimulator';
@@ -45,12 +47,23 @@ export const App: React.FC = () => {
     setUserProfile({ ...profile });
   };
 
+  // Start 60-Minute Mock Test with Non-Repeating Question Rotation
   const handleStartMockForExam = (examId: string) => {
     playClickSound();
     const exam = OLYMPIAD_EXAMS[examId];
-    // Filter questions matching grade and exam
-    const qList = QUESTION_BANK.filter(q => q.grade === userProfile.grade && q.examId === examId);
-    const selectedQs = qList.length >= 10 ? qList.slice(0, 20) : QUESTION_BANK.filter(q => q.grade === userProfile.grade).slice(0, 15);
+    
+    // Fetch 20 non-repeating questions for this student
+    const selectedQs = getNonRepeatingQuestions(
+      examId as OlympiadExamId,
+      userProfile.grade,
+      20,
+      userProfile
+    );
+
+    const totalMarks = selectedQs.reduce(
+      (acc, q) => acc + (q.section === 'achievers' || q.isLevel2 ? (q.marks || 2) : (q.marks || 1)),
+      0
+    );
 
     const test: MockTest = {
       id: `mock-${examId.toLowerCase()}-g${userProfile.grade}-${Date.now()}`,
@@ -58,7 +71,7 @@ export const App: React.FC = () => {
       examId: examId as OlympiadExamId,
       grade: userProfile.grade,
       durationMinutes: 60,
-      totalMarks: userProfile.grade >= 5 ? 60 : 40,
+      totalMarks: totalMarks || 40,
       isLevel2: false,
       description: `Comprehensive 60-minute simulated Olympiad examination with Logical Reasoning, Subject Core, Everyday Applications, and Achiever Section HOTS.`,
       questions: selectedQs
@@ -68,12 +81,20 @@ export const App: React.FC = () => {
     setCurrentTab('testing');
   };
 
+  // Start Chapter Practice Drill with Non-Repeating Question Rotation
   const handleStartChapterPractice = (examId: OlympiadExamId, chapterName: string) => {
     playClickSound();
-    const qList = QUESTION_BANK.filter(
-      q => q.grade === userProfile.grade && q.examId === examId
+    
+    // Fetch 10 non-repeating questions for this student
+    const chapterQs = getNonRepeatingQuestions(
+      examId,
+      userProfile.grade,
+      10,
+      userProfile,
+      chapterName
     );
-    const chapterQs = qList.length > 0 ? qList : QUESTION_BANK.filter(q => q.grade === userProfile.grade).slice(0, 10);
+
+    const totalMarks = chapterQs.reduce((acc, q) => acc + (q.marks || 1), 0);
 
     const test: MockTest = {
       id: `drill-${examId.toLowerCase()}-${Date.now()}`,
@@ -81,7 +102,7 @@ export const App: React.FC = () => {
       examId,
       grade: userProfile.grade,
       durationMinutes: 25,
-      totalMarks: chapterQs.length,
+      totalMarks: totalMarks || 10,
       isLevel2: false,
       description: `Focused chapter drill on ${chapterName} for Class ${userProfile.grade}.`,
       questions: chapterQs
@@ -91,7 +112,34 @@ export const App: React.FC = () => {
     setCurrentTab('testing');
   };
 
+  // Launch AI Follow-Up Adaptive Drill generated on weak areas or mastery
+  const handleStartAiFollowUpDrill = (aiQuestions: Question[], drillTitle: string) => {
+    const examId = aiQuestions[0]?.examId || 'IMO';
+    const totalMarks = aiQuestions.reduce((acc, q) => acc + (q.marks || 1), 0);
+
+    const test: MockTest = {
+      id: `ai-drill-${Date.now()}`,
+      title: drillTitle,
+      examId,
+      grade: userProfile.grade,
+      durationMinutes: 15,
+      totalMarks: totalMarks || 5,
+      isLevel2: false,
+      description: `AI-synthesized custom adaptive follow-up questions targeting key concept mastery and weak areas.`,
+      questions: aiQuestions
+    };
+
+    setActiveTest(test);
+    setCurrentTab('testing');
+  };
+
   const handleFinishTest = (result: TestAttemptResult) => {
+    if (activeTest) {
+      const newSolved = new Set(userProfile.solvedQuestionIds || []);
+      activeTest.questions.forEach(q => newSolved.add(q.id));
+      userProfile.solvedQuestionIds = Array.from(newSolved);
+    }
+
     const updated = recordTestAttempt(userProfile, result);
     setUserProfile({ ...updated });
     setLastResult(result);
@@ -105,7 +153,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-[#fffdf8] text-ink flex flex-col font-sans selection:bg-coral selection:text-white">
       {/* Navigation Header */}
       <Navbar
         currentTab={currentTab}
@@ -118,12 +166,12 @@ export const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content Container */}
+      <main className="flex-1 max-w-[1240px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* TAB 1: Explore / Dashboard */}
         {currentTab === 'dashboard' && (
-          <div className="space-y-10 animate-fade-in">
-            {/* Mascot Banner */}
+          <div className="space-y-12 animate-fade-in">
+            {/* Hero Section with Retro-Space Art */}
             <MascotHero
               userProfile={userProfile}
               onGradeChange={handleGradeChange}
@@ -133,29 +181,59 @@ export const App: React.FC = () => {
               onOpenWorksheets={() => setCurrentTab('worksheets')}
             />
 
-            {/* Daily Speed Arena */}
-            <DailyChallenge
-              userProfile={userProfile}
-              onQuestionSolved={handleXpGained}
-              onOpenAiHint={handleAskAiDoubt}
-            />
-
-            {/* 6 Olympiad Subjects Grid */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
+            {/* Grade Selector & Track Cards */}
+            <section id="paths" className="space-y-6 pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-2xl font-black text-white">Choose Your Olympiad Exam</h2>
-                  <p className="text-xs text-slate-400 mt-1">Full grade-tailored preparation aligned with official SOF syllabi</p>
+                  <span className="text-[10px] font-black uppercase tracking-[1.7px] text-[#536087]">
+                    Start Here
+                  </span>
+                  <h2 className="text-3xl font-black tracking-tight text-ink mt-1">
+                    What grade are you in?
+                  </h2>
                 </div>
+                <p className="text-xs text-[#76809d] max-w-xs font-medium">
+                  We’ll tune every challenge and question to the way you’re learning right now.
+                </p>
+              </div>
+
+              {/* 10-Column Grade Tray */}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 p-3 bg-[#f0f0f7] rounded-2xl border border-[#e2e2ec]">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => {
+                  const isSelected = userProfile.grade === g;
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => { playClickSound(); handleGradeChange(g as GradeLevel); }}
+                      className={`h-16 rounded-xl flex flex-col items-center justify-center transition-all ${
+                        isSelected
+                          ? 'bg-white text-ink shadow-md font-black border border-ink/10 scale-105'
+                          : 'bg-transparent text-[#697293] hover:bg-[#e5e5f0] font-bold'
+                      }`}
+                    >
+                      <span className="text-xl font-black leading-none">{g}</span>
+                      <small className="text-[9px] uppercase font-bold text-ink-muted mt-0.5">Grade</small>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Path Topline Header */}
+              <div className="flex items-center justify-between pt-4">
+                <span className="text-[10px] font-black uppercase tracking-[1.4px] text-[#6c7594]">
+                  Your Grade {userProfile.grade} Learning Tracks
+                </span>
                 <button
                   onClick={() => { playClickSound(); setCurrentTab('gradeHub'); }}
-                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs font-extrabold text-ink hover:text-coral transition-colors inline-flex items-center gap-1"
                 >
-                  View Full Syllabus →
+                  <span>See full curriculum</span>
+                  <b className="text-coral text-sm">→</b>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* 6 Pastel Track Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {Object.values(OLYMPIAD_EXAMS).map(exam => (
                   <SubjectCard
                     key={exam.id}
@@ -167,7 +245,25 @@ export const App: React.FC = () => {
                   />
                 ))}
               </div>
-            </div>
+            </section>
+
+            {/* Momentum Galaxy Trail Section */}
+            <MomentumSection userProfile={userProfile} />
+
+            {/* Daily Tiny Wins & Daily Spark Test */}
+            <DailyChallenge
+              userProfile={userProfile}
+              onQuestionSolved={handleXpGained}
+              onOpenAiHint={handleAskAiDoubt}
+              onOpenPyq={() => setCurrentTab('pyq')}
+            />
+
+            {/* Meet Coach Nova */}
+            <CoachNovaSection
+              currentGrade={userProfile.grade}
+              onGradeChange={handleGradeChange}
+              onOpenCoachChat={() => setCurrentTab('aiCoach')}
+            />
           </div>
         )}
 
@@ -183,14 +279,17 @@ export const App: React.FC = () => {
         {/* TAB 3: Mock Tests Grid */}
         {currentTab === 'mockTests' && (
           <div className="space-y-8 animate-fade-in">
-            <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950 via-slate-900 to-purple-950 border border-indigo-500/20 shadow-xl">
-              <h2 className="text-3xl font-black text-white">Authentic 60-Minute Timed Mock Tests</h2>
-              <p className="text-sm text-slate-300 mt-2 max-w-2xl">
-                Experience the exact SOF exam environment with live countdown, scratchpad calculations, section weightages, and Achiever Section HOTS questions.
+            <div className="p-8 rounded-3xl bg-ink text-white shadow-xl space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#a7b9fa]">
+                Exam Simulator
+              </span>
+              <h2 className="text-3xl font-black">Authentic 60-Minute Timed Mock Tests</h2>
+              <p className="text-xs sm:text-sm text-[#adb5d3] max-w-2xl font-medium">
+                Experience the exact SOF exam environment with non-repeating question rotation, live countdown, scratchpad calculations, section weightages, and Achiever Section HOTS questions.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {Object.values(OLYMPIAD_EXAMS).map(exam => (
                 <SubjectCard
                   key={exam.id}
@@ -247,12 +346,12 @@ export const App: React.FC = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-white">Ask Olympiad Coach (Doubt Solver)</h2>
-                <p className="text-xs text-slate-400 mt-1">Get 3-step Socratic hints, formulas, and kid-friendly analogies</p>
+                <h2 className="text-2xl font-black text-ink">Ask Olympiad Coach (Doubt Solver)</h2>
+                <p className="text-xs text-ink-muted mt-1">Get 3-step Socratic hints, formulas, and kid-friendly analogies</p>
               </div>
               <button
                 onClick={() => setCurrentTab('aiGenerator')}
-                className="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-bold text-xs border border-purple-500/30 transition-colors"
+                className="btn-ink text-xs py-2 px-4"
               >
                 ✨ Dynamic Question Generator →
               </button>
@@ -269,12 +368,12 @@ export const App: React.FC = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black text-white">Infinite AI Question Generator</h2>
-                <p className="text-xs text-slate-400 mt-1">Generate unlimited authentic multiple-choice Olympiad problems on any topic</p>
+                <h2 className="text-2xl font-black text-ink">Infinite AI Question Generator</h2>
+                <p className="text-xs text-ink-muted mt-1">Generate unlimited authentic multiple-choice Olympiad problems on any topic</p>
               </div>
               <button
                 onClick={() => setCurrentTab('aiCoach')}
-                className="px-4 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 font-bold text-xs border border-indigo-500/30 transition-colors"
+                className="btn-white text-xs py-2 px-4"
               >
                 ← Back to AI Coach
               </button>
@@ -314,6 +413,7 @@ export const App: React.FC = () => {
               setCurrentTab('dashboard');
             }}
             onAskAiDoubt={handleAskAiDoubt}
+            onStartAiFollowUp={handleStartAiFollowUpDrill}
           />
         )}
       </main>
@@ -321,7 +421,7 @@ export const App: React.FC = () => {
       {/* Footer */}
       <Footer />
 
-      {/* API Key / Model Settings Modal */}
+      {/* API Key / Settings Modal */}
       <ApiKeyModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

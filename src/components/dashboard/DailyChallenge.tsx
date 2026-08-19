@@ -1,29 +1,36 @@
-﻿import React, { useState } from 'react';
-import { Flame, CheckCircle, XCircle, Sparkles, ChevronRight, HelpCircle, Trophy, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, CheckCircle, XCircle, Sparkles, ChevronRight, HelpCircle, RotateCcw, Clock, ArrowRight } from 'lucide-react';
 import { Question, UserProfile } from '../../types/olympiad';
+import { getDailyArenaQuestions } from '../../services/questionRotationService';
 import { QUESTION_BANK } from '../../data/questionBank';
 import { playSuccessSound, playErrorSound, playClickSound } from '../../services/audioService';
 import { triggerConfettiCelebration } from '../common/ConfettiCelebration';
 import { RichMathText } from '../common/LatexRenderer';
+import { generateAiAdaptiveDrill } from '../../services/aiService';
 
 interface DailyChallengeProps {
   userProfile: UserProfile;
   onQuestionSolved: (xpGained: number) => void;
   onOpenAiHint: (q: Question) => void;
+  onOpenPyq?: () => void;
 }
 
 export const DailyChallenge: React.FC<DailyChallengeProps> = ({
   userProfile,
   onQuestionSolved,
-  onOpenAiHint
+  onOpenAiHint,
+  onOpenPyq
 }) => {
-  // Get 3 questions matching user's grade
-  const dailyQuestions = QUESTION_BANK.filter(q => q.grade === userProfile.grade).slice(0, 3);
+  const [dailyQuestions, setDailyQuestions] = useState<Question[]>(() =>
+    getDailyArenaQuestions(userProfile.grade, userProfile)
+  );
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [isGeneratingMore, setIsGeneratingMore] = useState(false);
 
   const currentQ = dailyQuestions[currentIndex] || QUESTION_BANK[0];
 
@@ -33,14 +40,18 @@ export const DailyChallenge: React.FC<DailyChallengeProps> = ({
     setSelectedOption(idx);
     setIsAnswered(true);
 
+    if (!userProfile.solvedQuestionIds.includes(currentQ.id)) {
+      userProfile.solvedQuestionIds.push(currentQ.id);
+    }
+
     if (idx === currentQ.correctOptionIndex) {
       playSuccessSound();
       setScore(prev => prev + 1);
       triggerConfettiCelebration();
-      onQuestionSolved(20); // 20 XP for correct daily challenge question
+      onQuestionSolved(20);
     } else {
       playErrorSound();
-      onQuestionSolved(5); // 5 XP for effort
+      onQuestionSolved(5);
     }
   };
 
@@ -64,136 +75,285 @@ export const DailyChallenge: React.FC<DailyChallengeProps> = ({
     setCompleted(false);
   };
 
-  return (
-    <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 shadow-xl mb-8 relative overflow-hidden">
-      {/* Background Accent */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+  const handleGenerateMoreAiQuestions = async () => {
+    playClickSound();
+    setIsGeneratingMore(true);
 
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            <Flame className="w-5 h-5 animate-pulse" />
-          </div>
+    try {
+      const more = await generateAiAdaptiveDrill(
+        'IMO',
+        userProfile.grade,
+        ['Speed Math & Logic', 'Science Trivia', 'Cyber Problem Solving'],
+        3
+      );
+      setDailyQuestions(more);
+      setCurrentIndex(0);
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setScore(0);
+      setCompleted(false);
+      playSuccessSound();
+      triggerConfettiCelebration();
+    } catch (e) {
+      console.error('Failed to generate more AI questions', e);
+    } finally {
+      setIsGeneratingMore(false);
+    }
+  };
+
+  return (
+    <div id="daily-spark" className="space-y-12 my-12">
+      {/* 1. TODAY'S TINY WINS TASK CARDS */}
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-white">Daily Olympiad Arena</h2>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] uppercase">
-                {userProfile.streakDays} Day Streak 🔥
+            <span className="text-[10px] font-black uppercase tracking-[1.7px] text-[#536087]">
+              Today’s Tiny Wins
+            </span>
+            <h2 className="text-3xl font-black tracking-tight text-ink mt-1">
+              Pick a spark. Get started.
+            </h2>
+          </div>
+          <p className="text-xs text-[#76809d] max-w-xs font-medium">
+            No huge sessions. Just small moments that make your brain brighter.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Card 1: Math Sprint (Yellow) */}
+          <div className="p-6 rounded-2xl bg-[#ffdd43] text-ink relative overflow-hidden flex flex-col justify-between min-h-[190px] border-2 border-ink/15 shadow-sm transition-all hover:-translate-y-1">
+            <div className="absolute -right-8 -bottom-12 w-36 h-36 rounded-full border border-ink/10 pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-white border border-ink/20 shadow-[2px_3px_0_rgba(21,29,68,0.2)] flex items-center justify-center text-xl">
+                ⚡
+              </div>
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full border border-ink/20 bg-white/40">
+                8 min
               </span>
             </div>
-            <p className="text-xs text-slate-400">3 daily speed questions to sharpen your logic and earn bonus XP</p>
+            <h3 className="text-lg font-black text-ink tracking-tight mt-3">
+              Number Ninja Sprint
+            </h3>
+            <div className="flex items-center justify-between text-xs font-black pt-3 border-t border-ink/10">
+              <span className="text-[#966b03]">+15 sparks</span>
+              <span className="flex items-center gap-1">Start <ArrowRight className="w-3.5 h-3.5" /></span>
+            </div>
+          </div>
+
+          {/* Card 2: Logic Bender (Pink) */}
+          <div className="p-6 rounded-2xl bg-[#ffb9d3] text-ink relative overflow-hidden flex flex-col justify-between min-h-[190px] border-2 border-ink/15 shadow-sm transition-all hover:-translate-y-1">
+            <div className="absolute -right-8 -bottom-12 w-36 h-36 rounded-full border border-ink/10 pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-white border border-ink/20 shadow-[2px_3px_0_rgba(21,29,68,0.2)] flex items-center justify-center text-xl">
+                ◈
+              </div>
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full border border-ink/20 bg-white/40">
+                4 min
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-ink tracking-tight mt-3">
+              Brain-bender of the day
+            </h3>
+            <div className="flex items-center justify-between text-xs font-black pt-3 border-t border-ink/10">
+              <span className="text-[#9a2858]">+10 sparks</span>
+              <span className="flex items-center gap-1">Start <ArrowRight className="w-3.5 h-3.5" /></span>
+            </div>
+          </div>
+
+          {/* Card 3: Science & Cyber (Blue) */}
+          <div className="p-6 rounded-2xl bg-[#c2d8ff] text-ink relative overflow-hidden flex flex-col justify-between min-h-[190px] border-2 border-ink/15 shadow-sm transition-all hover:-translate-y-1">
+            <div className="absolute -right-8 -bottom-12 w-36 h-36 rounded-full border border-ink/10 pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-white border border-ink/20 shadow-[2px_3px_0_rgba(21,29,68,0.2)] flex items-center justify-center text-xl">
+                ▣
+              </div>
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full border border-ink/20 bg-white/40">
+                6 min
+              </span>
+            </div>
+            <h3 className="text-lg font-black text-ink tracking-tight mt-3">
+              Read, Recall & Code
+            </h3>
+            <div className="flex items-center justify-between text-xs font-black pt-3 border-t border-ink/10">
+              <span className="text-[#1a4da6]">+10 sparks</span>
+              <span className="flex items-center gap-1">Start <ArrowRight className="w-3.5 h-3.5" /></span>
+            </div>
           </div>
         </div>
-
-        {!completed && (
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-            <span>Question {currentIndex + 1} of {dailyQuestions.length}</span>
-          </div>
-        )}
       </div>
 
-      {completed ? (
-        /* Completed State */
-        <div className="py-8 text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-3xl shadow-lg shadow-amber-500/20 animate-bounce-slow">
-            🏆
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-white">Daily Arena Completed!</h3>
-            <p className="text-sm text-slate-300 mt-1">
-              You scored <strong className="text-amber-400 font-bold">{score} / {dailyQuestions.length}</strong> today.
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">+50 Bonus Daily Streak XP Earned!</p>
-          </div>
-          <button
-            onClick={handleRestart}
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md"
-          >
-            <RotateCcw className="w-3.5 h-3.5" /> Practice Again
-          </button>
-        </div>
-      ) : (
-        /* Question Active State */
-        <div className="space-y-5">
-          {/* Question Meta */}
-          <div className="flex items-center justify-between text-xs">
-            <span className="px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-semibold">
-              {currentQ.examId} • {currentQ.chapter}
-            </span>
-            <button
-              onClick={() => onOpenAiHint(currentQ)}
-              className="flex items-center gap-1 text-pink-400 hover:text-pink-300 font-semibold transition-colors"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Need a Hint?</span>
-            </button>
+      {/* 2. DAILY SPARK TEST & PREVIOUS YEAR TEASER */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Interactive Quiz Shell (8 cols) */}
+        <div className="lg:col-span-8 rounded-3xl bg-[#f4f1ff] border-2 border-ink/10 p-6 sm:p-8 space-y-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[1.4px] text-[#7e75ae]">
+                Daily Spark Test
+              </span>
+              <h3 className="text-2xl font-black text-ink tracking-tight mt-0.5">
+                One good question<br />is all it takes.
+              </h3>
+            </div>
+            <div className="text-right">
+              <span className="text-xl font-black text-ink font-mono block">04:00</span>
+              <small className="text-[10px] font-bold text-[#8585a3]">time to think</small>
+            </div>
           </div>
 
-          {/* Question Text */}
-          <div className="text-sm sm:text-base font-medium text-white leading-relaxed bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
-            <RichMathText text={currentQ.questionText} />
+          {/* Progress Dots */}
+          <div className="flex items-center gap-1.5 py-1">
+            {dailyQuestions.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-1.5 rounded-full transition-all ${
+                  idx === currentIndex
+                    ? 'w-7 bg-[#7666b5]'
+                    : idx < currentIndex
+                    ? 'w-4 bg-[#a79bc8]'
+                    : 'w-4 bg-[#d5d0ea]'
+                }`}
+              />
+            ))}
           </div>
 
-          {/* Options Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {currentQ.options.map((opt, idx) => {
-              const isSelected = selectedOption === idx;
-              const isCorrect = idx === currentQ.correctOptionIndex;
-
-              let btnStyle = 'bg-slate-800/70 border-slate-700/80 text-slate-200 hover:bg-slate-700/80 hover:border-slate-600';
-              if (isAnswered) {
-                if (isCorrect) {
-                  btnStyle = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold';
-                } else if (isSelected) {
-                  btnStyle = 'bg-rose-500/20 border-rose-500/50 text-rose-300 font-bold';
-                } else {
-                  btnStyle = 'bg-slate-850 border-slate-800 text-slate-500 opacity-60';
-                }
-              }
-
-              return (
+          {completed ? (
+            /* Completed Screen */
+            <div className="p-6 rounded-2xl bg-white border border-[#e2e1ea] text-center space-y-4">
+              <div className="text-3xl">🎉</div>
+              <h4 className="text-xl font-black text-ink">Daily Spark Complete!</h4>
+              <p className="text-xs text-[#58638b]">
+                You scored <strong className="text-ink font-black">{score} / {dailyQuestions.length}</strong>! +50 Daily Streak Sparks Earned.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
-                  key={idx}
-                  onClick={() => handleSelectOption(idx)}
-                  disabled={isAnswered}
-                  className={`p-3.5 rounded-2xl border text-left text-xs sm:text-sm font-medium transition-all flex items-center justify-between gap-3 ${btnStyle}`}
+                  onClick={handleGenerateMoreAiQuestions}
+                  disabled={isGeneratingMore}
+                  className="btn-ink text-xs py-2 px-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-                      {String.fromCharCode(65 + idx)}
-                    </span>
-                    <RichMathText text={opt} />
-                  </div>
-                  {isAnswered && isCorrect && <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />}
-                  {isAnswered && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+                  <Sparkles className="w-3.5 h-3.5 text-yellow" />
+                  <span>{isGeneratingMore ? 'Generating...' : '✨ Generate 3 More AI Questions'}</span>
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Explanation & Next */}
-          {isAnswered && (
-            <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Explanation & Olympiad Concept
-                </span>
                 <button
-                  onClick={handleNext}
-                  className="flex items-center gap-1 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+                  onClick={handleRestart}
+                  className="btn-white text-xs py-2 px-4"
                 >
-                  {currentIndex + 1 === dailyQuestions.length ? 'See Results' : 'Next Question'}
-                  <ChevronRight className="w-4 h-4" />
+                  Replay Spark
                 </button>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {currentQ.explanation}
-              </p>
+            </div>
+          ) : (
+            /* Active Question Card */
+            <div className="p-6 rounded-2xl bg-white border border-[#e2e1ea] space-y-4">
+              <div className="flex items-center justify-between">
+                <small className="text-[10px] font-black tracking-wider text-[#8390ae] uppercase">
+                  Question {currentIndex + 1} of {dailyQuestions.length} · {currentQ.examId}
+                </small>
+                <button
+                  onClick={() => onOpenAiHint(currentQ)}
+                  className="text-[11px] font-bold text-[#eb775e] hover:underline inline-flex items-center gap-1"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" /> Need hint?
+                </button>
+              </div>
+
+              <div className="text-sm sm:text-base font-bold text-ink leading-relaxed">
+                <RichMathText text={currentQ.questionText} />
+              </div>
+
+              {/* Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                {currentQ.options.slice(0, 3).map((opt, optIdx) => {
+                  const isSelected = selectedOption === optIdx;
+                  const isCorrect = optIdx === currentQ.correctOptionIndex;
+
+                  let optClass = 'bg-white border-[#e2e1ea] text-ink hover:border-[#6d5bb5] hover:bg-[#faf9ff]';
+                  if (isAnswered) {
+                    if (isCorrect) optClass = 'bg-[#ecfbf3] border-[#3fba84] text-[#18835a] font-bold';
+                    else if (isSelected) optClass = 'bg-[#fff4f2] border-[#fa6b60] text-[#c93f34]';
+                    else optClass = 'bg-white border-[#e2e1ea] opacity-50';
+                  }
+
+                  return (
+                    <button
+                      key={optIdx}
+                      disabled={isAnswered}
+                      onClick={() => handleSelectOption(optIdx)}
+                      className={`min-h-[50px] p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center gap-2.5 ${optClass}`}
+                    >
+                      <span className="w-5 h-5 rounded-full bg-[#f0eff6] text-[#6c6d84] text-[10px] font-black flex items-center justify-center shrink-0">
+                        {String.fromCharCode(65 + optIdx)}
+                      </span>
+                      <span className="flex-1"><RichMathText text={opt} /></span>
+                      {isAnswered && isCorrect && <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Answer Note / Next */}
+              {isAnswered && (
+                <div className={`p-3.5 rounded-xl border flex items-center gap-3 animate-fade-in ${
+                  selectedOption === currentQ.correctOptionIndex
+                    ? 'bg-[#eefaf3] border-[#a7ead1] text-[#167e5a]'
+                    : 'bg-[#fff4f2] border-[#ffd2c9] text-[#c93f34]'
+                }`}>
+                  <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                    {selectedOption === currentQ.correctOptionIndex ? '✦' : '◌'}
+                  </span>
+                  <div className="flex-1 text-xs">
+                    <strong className="block text-ink font-black">
+                      {selectedOption === currentQ.correctOptionIndex
+                        ? 'That’s it — you nailed the Olympiad concept!'
+                        : 'Nearly! Check the step-by-step logic.'}
+                    </strong>
+                    <span className="text-[#59617b] line-clamp-1">{currentQ.explanation}</span>
+                  </div>
+                  <button
+                    onClick={handleNext}
+                    className="px-3 py-1.5 rounded-lg bg-ink text-white font-extrabold text-xs shrink-0 hover:scale-105 transition-transform"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* Right Papers Teaser (4 cols) */}
+        <aside className="lg:col-span-4 rounded-3xl bg-[#fff0c9] border-2 border-ink/10 p-6 sm:p-8 relative overflow-hidden flex flex-col justify-between min-h-[300px]">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-[1.4px] text-[#72654c]">
+              Go Deeper
+            </span>
+            <h3 className="text-2xl font-black text-ink tracking-tight mt-1 leading-tight">
+              Previous year<br />papers, but kinder.
+            </h3>
+            <p className="text-xs text-[#72654c] mt-2 leading-relaxed max-w-[220px]">
+              Build exam calm with 2020–2025 timed papers, friendly hints and full step-by-step solutions.
+            </p>
+          </div>
+
+          {/* Paper Stack Graphic */}
+          <div className="relative h-28 my-4">
+            <div className="absolute right-4 top-0 w-24 h-28 rounded-md bg-[#fc8a76] border-2 border-ink rotate-6" />
+            <div className="absolute right-8 top-3 w-24 h-28 rounded-md bg-white border-2 border-ink shadow-[4px_5px_0_rgba(21,29,68,0.13)] p-2.5">
+              <b className="text-[9px] font-black text-ink">SOF</b>
+              <span className="block text-sm font-black text-ink leading-tight mt-1">IMO<br />Grade {userProfile.grade}</span>
+              <i className="absolute bottom-2 right-2 text-[8px] font-bold text-ink-muted not-italic">2025</i>
+            </div>
+          </div>
+
+          <button
+            onClick={() => { playClickSound(); if (onOpenPyq) onOpenPyq(); }}
+            className="text-xs font-black text-ink border-b border-ink pb-0.5 inline-flex items-center gap-1.5 self-start"
+          >
+            <span>Browse 2020–2025 papers</span>
+            <b className="text-[#f07762] text-sm">→</b>
+          </button>
+        </aside>
+      </div>
     </div>
   );
 };

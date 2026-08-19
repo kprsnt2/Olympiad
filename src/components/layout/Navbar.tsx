@@ -1,7 +1,7 @@
-﻿import React, { useState } from 'react';
-import { Sparkles, Flame, Volume2, VolumeX, Settings, BookOpen, Clock, FileText, Brain, Award, Layers, Zap } from 'lucide-react';
+import React, { useState } from 'react';
 import { GradeLevel, UserProfile } from '../../types/olympiad';
-import { isAudioMuted, setAudioMuted, playClickSound } from '../../services/audioService';
+import { Sparkles, Flame, Volume2, VolumeX, Settings, Award } from 'lucide-react';
+import { toggleMute, isAudioMuted, playClickSound } from '../../services/audioService';
 
 interface NavbarProps {
   currentTab: string;
@@ -18,134 +18,136 @@ export const Navbar: React.FC<NavbarProps> = ({
   onGradeChange,
   onOpenSettings
 }) => {
-  const [muted, setMutedState] = useState(isAudioMuted());
+  const [muted, setMuted] = useState(isAudioMuted());
 
-  const toggleMute = () => {
-    const next = !muted;
-    setMutedState(next);
-    setAudioMuted(next);
+  const handleAudioToggle = () => {
+    const next = toggleMute();
+    setMuted(next);
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Explore', icon: Sparkles },
-    { id: 'gradeHub', label: 'Grade Hub', icon: Layers },
-    { id: 'mockTests', label: 'Mock Tests', icon: Clock },
-    { id: 'level2', label: 'Level 2 Zone', icon: Zap },
-    { id: 'pyq', label: '2020-25 PYQs', icon: BookOpen },
-    { id: 'worksheets', label: 'Worksheets', icon: FileText },
-    { id: 'formulaSheets', label: 'Cheat Sheets', icon: BookOpen },
-    { id: 'aiCoach', label: 'AI Coach', icon: Brain },
-    { id: 'badges', label: 'Badges', icon: Award },
+    { id: 'dashboard', label: 'Explore' },
+    { id: 'gradeHub', label: 'Learn' },
+    { id: 'mockTests', label: 'Practice' },
+    { id: 'level2', label: 'Level 2' },
+    { id: 'pyq', label: 'Papers' },
+    { id: 'worksheets', label: 'Worksheets' },
+    { id: 'formulaSheets', label: 'Formulas' },
+    { id: 'aiCoach', label: 'Coach' },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800">
-      {/* Top Utility Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
-        {/* Brand */}
-        <div 
-          onClick={() => { playClickSound(); onSelectTab('dashboard'); }}
-          className="flex items-center gap-2.5 cursor-pointer group"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
-            🚀
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-purple-300">
-                Olympiad<span className="text-indigo-400">Quest</span>
-              </span>
-              <span className="text-[10px] uppercase font-black tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                SOF 2026
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium">IMO • ISO • ICSO • IEO • IGKO • ISSO</p>
-          </div>
-        </div>
+    <header className="sticky top-0 z-50 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#e9e6df] shadow-xs">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 h-[80px] flex items-center justify-between">
+        {/* Brand Logo */}
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => { playClickSound(); onSelectTab('dashboard'); }}
+            className="brand hover:opacity-90 transition-opacity text-left"
+          >
+            <span className="brand-star">✦</span>
+            <span>olympi</span>
+            <span className="brand-dot">.</span>
+          </button>
 
-        {/* Grade Selector & User Stats */}
-        <div className="flex items-center gap-3">
-          {/* Grade Selector Pill */}
-          <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/80 rounded-2xl px-3 py-1.5">
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">Grade:</span>
+          {/* Grade Quick Switcher */}
+          <div className="hidden sm:flex items-center bg-[#f0f0f7] p-1 rounded-xl border border-[#e2e2ec]">
+            <span className="text-[10px] font-black uppercase text-ink-muted px-2">Grade:</span>
             <select
               value={userProfile.grade}
-              onChange={(e) => {
+              onChange={e => {
                 playClickSound();
                 onGradeChange(Number(e.target.value) as GradeLevel);
               }}
-              className="bg-transparent text-xs font-bold text-indigo-300 focus:outline-none cursor-pointer"
+              className="bg-white text-ink text-xs font-black px-2.5 py-1 rounded-lg border border-[#d5d5e5] shadow-xs focus:outline-none cursor-pointer"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => (
-                <option key={g} value={g} className="bg-slate-900 text-white">
-                  Class {g}
-                </option>
+                <option key={g} value={g}>Class {g}</option>
               ))}
             </select>
           </div>
+        </div>
 
-          {/* Streak Counter */}
-          <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-3 py-1.5 text-xs font-bold text-amber-400" title="Daily Practice Streak">
-            <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
-            <span>{userProfile.streakDays} Day{userProfile.streakDays > 1 ? 's' : ''}</span>
+        {/* Center Nav Links */}
+        <nav className="hidden lg:flex items-center gap-7 text-xs font-extrabold text-[#536087]">
+          {navItems.map(item => {
+            const isActive = currentTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { playClickSound(); onSelectTab(item.id); }}
+                className={`transition-colors py-1.5 border-b-2 font-black ${
+                  isActive
+                    ? 'text-ink border-coral'
+                    : 'border-transparent hover:text-ink'
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Right Actions & Gamification Status */}
+        <div className="flex items-center gap-3">
+          {/* Daily Streak */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ffefe9] border border-[#ffd5c7] text-[#e05638] font-black text-xs">
+            <Flame className="w-3.5 h-3.5 fill-[#ff795f] text-[#ff795f] animate-pulse" />
+            <span>{userProfile.streakDays}d streak</span>
           </div>
 
-          {/* XP & Rank */}
-          <div 
-            onClick={() => { playClickSound(); onSelectTab('badges'); }}
-            className="hidden md:flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-2xl px-3 py-1.5 cursor-pointer hover:bg-purple-500/20 transition-colors"
-          >
-            <span className="text-xs">⭐</span>
-            <div className="text-left">
-              <div className="text-[11px] font-extrabold text-purple-300">{userProfile.xp} XP</div>
-              <div className="text-[9px] text-purple-400/80">{userProfile.rankTier}</div>
-            </div>
+          {/* Sparks XP */}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#fff8db] border border-[#fde89c] text-[#9b6f02] font-black text-xs">
+            <Sparkles className="w-3.5 h-3.5 text-[#e5a800]" />
+            <span>{userProfile.xp} sparks</span>
           </div>
 
           {/* Sound Toggle */}
           <button
-            onClick={toggleMute}
-            className="p-2 rounded-xl bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/80 transition-colors"
-            title={muted ? 'Unmute Sound' : 'Mute Sound'}
+            onClick={handleAudioToggle}
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[#f0edf7] transition-colors"
+            title={muted ? 'Unmute Audio' : 'Mute Audio'}
           >
-            {muted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-ink" />}
           </button>
 
-          {/* Settings / API Key */}
+          {/* Settings / API Key Dialog */}
           <button
             onClick={() => { playClickSound(); onOpenSettings(); }}
-            className="p-2 rounded-xl bg-slate-800/80 text-slate-400 hover:text-indigo-300 border border-slate-700/80 hover:border-indigo-500/50 transition-colors"
-            title="Configure AI Models & Keys"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[#f0edf7] transition-colors"
+            title="Settings"
           >
             <Settings className="w-4 h-4" />
+          </button>
+
+          {/* User Avatar */}
+          <button
+            onClick={() => { playClickSound(); onSelectTab('badges'); }}
+            className="w-9 h-9 rounded-full bg-[#ffcf9c] text-[#974b38] font-black text-xs flex items-center justify-center relative shadow-xs border-2 border-white"
+          >
+            <span>{userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'A'}</span>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#57c88d] border-2 border-[#fffdf8]" />
           </button>
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+      {/* Mobile Sub-Nav Row */}
+      <div className="lg:hidden flex items-center gap-2 overflow-x-auto no-scrollbar px-4 py-2 border-t border-[#f0edf7] bg-[#fffcf5]">
         {navItems.map(item => {
-          const Icon = item.icon;
           const isActive = currentTab === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => {
-                playClickSound();
-                onSelectTab(item.id);
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              onClick={() => { playClickSound(); onSelectTab(item.id); }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                isActive ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
               {item.label}
             </button>
           );
         })}
-      </nav>
+      </div>
     </header>
   );
 };

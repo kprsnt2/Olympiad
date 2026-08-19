@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TestAttemptResult, Question } from '../../types/olympiad';
-import { Trophy, CheckCircle, XCircle, Clock, Sparkles, Brain, RotateCcw, ChevronRight, HelpCircle, ArrowLeft, Zap } from 'lucide-react';
+import { Trophy, CheckCircle, XCircle, Clock, Sparkles, Brain, RotateCcw, ChevronRight, HelpCircle, ArrowLeft, Zap, Target } from 'lucide-react';
 import { triggerGrandChampionFireworks, triggerConfettiCelebration } from '../common/ConfettiCelebration';
 import { RichMathText } from '../common/LatexRenderer';
-import { playClickSound } from '../../services/audioService';
+import { playClickSound, playSuccessSound } from '../../services/audioService';
+import { generateAiAdaptiveDrill } from '../../services/aiService';
 
 interface ResultAnalyticsProps {
   result: TestAttemptResult;
@@ -11,6 +12,7 @@ interface ResultAnalyticsProps {
   onRetakeTest: () => void;
   onBackToDashboard: () => void;
   onAskAiDoubt: (q: Question) => void;
+  onStartAiFollowUp?: (questions: Question[], drillTitle: string) => void;
 }
 
 export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
@@ -18,9 +20,11 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
   questions,
   onRetakeTest,
   onBackToDashboard,
-  onAskAiDoubt
+  onAskAiDoubt,
+  onStartAiFollowUp
 }) => {
   const [reviewFilter, setReviewFilter] = useState<'all' | 'incorrect' | 'correct' | 'achievers'>('all');
+  const [isGeneratingAiDrill, setIsGeneratingAiDrill] = useState(false);
 
   useEffect(() => {
     if (result.percentage >= 80) {
@@ -38,6 +42,36 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
   };
 
   const medal = getMedalInfo(result.percentage);
+
+  // Identify weak chapters (where user got wrong or skipped)
+  const missedChapters = Array.from(new Set(
+    questions
+      .filter((q, idx) => result.userAnswers[idx] !== q.correctOptionIndex)
+      .map(q => q.chapter)
+  ));
+
+  const handleLaunchAiFollowUp = async () => {
+    if (!onStartAiFollowUp) return;
+    playClickSound();
+    setIsGeneratingAiDrill(true);
+
+    try {
+      const examId = questions[0]?.examId || 'IMO';
+      const grade = questions[0]?.grade || 4;
+      const targetTopics = missedChapters.length > 0 ? missedChapters : [questions[0]?.chapter || 'Achiever Section HOTS'];
+      
+      const newQuestions = await generateAiAdaptiveDrill(examId, grade, targetTopics, 5);
+      playSuccessSound();
+      onStartAiFollowUp(
+        newQuestions,
+        `AI Adaptive Follow-Up Drill: ${targetTopics.slice(0, 2).join(', ')}`
+      );
+    } catch (e) {
+      console.error('Failed to generate AI follow up drill', e);
+    } finally {
+      setIsGeneratingAiDrill(false);
+    }
+  };
 
   const filteredQuestions = questions.map((q, originalIdx) => {
     const userChoice = result.userAnswers[originalIdx];
@@ -70,10 +104,10 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
           Completed <strong className="text-white">{result.testTitle}</strong> with excellence!
         </p>
 
-        {/* Big Numbers Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mt-6">
+        {/* Score Quick Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 max-w-3xl mx-auto">
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <span className="text-xs text-slate-400 font-medium uppercase">Score</span>
+            <span className="text-xs text-slate-400 font-medium uppercase">Score Earned</span>
             <div className="text-2xl font-black text-indigo-400 mt-0.5">
               {result.score} <span className="text-xs text-slate-400">/ {result.totalMarks}</span>
             </div>
@@ -119,7 +153,36 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
         </div>
       </div>
 
-      {/* 2. Section-Wise Breakdown */}
+      {/* 2. ✨ AI ADAPTIVE FOLLOW-UP QUESTIONS CARD */}
+      <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 border border-purple-500/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 font-extrabold text-xs">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Adaptive Weak-Area Booster</span>
+          </div>
+          <h3 className="text-lg sm:text-xl font-black text-white">
+            {missedChapters.length > 0
+              ? `Strengthen Your Weak Areas in ${missedChapters.slice(0, 2).join(', ')}`
+              : `Mastery Unlocked! Ready for Advanced AI HOTS Challenge?`}
+          </h3>
+          <p className="text-xs text-slate-300 max-w-xl">
+            {missedChapters.length > 0
+              ? `AI Coach will generate 5 brand new custom practice questions specifically targeting the concepts you missed.`
+              : `You scored high! AI Coach can generate 5 high-difficulty Level-2 Olympiad questions to push your skills further.`}
+          </p>
+        </div>
+
+        <button
+          onClick={handleLaunchAiFollowUp}
+          disabled={isGeneratingAiDrill}
+          className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all hover:scale-105 disabled:opacity-50 shrink-0"
+        >
+          <Sparkles className={`w-4 h-4 ${isGeneratingAiDrill ? 'animate-spin' : ''}`} />
+          {isGeneratingAiDrill ? 'Generating 5 AI Questions...' : '✨ Generate 5 AI Follow-Up Questions'}
+        </button>
+      </div>
+
+      {/* 3. Section-Wise Breakdown */}
       <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-400" /> Section-Wise Performance & Achiever Weightage
@@ -138,10 +201,10 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${isAchiever ? 'text-amber-400' : 'text-slate-300'}`}>
-                    {secKey === 'logical' ? 'Logical' : secKey === 'subject' ? 'Subject Core' : secKey === 'everyday' ? 'Everyday' : 'Achievers (HOTS)'}
+                  <span className={`text-xs font-bold capitalize ${isAchiever ? 'text-amber-300' : 'text-slate-300'}`}>
+                    {secKey === 'achievers' ? 'Achievers (HOTS 2x)' : secKey}
                   </span>
-                  <span className="text-xs font-extrabold text-white">{secAcc}%</span>
+                  <span className="text-xs font-black text-white">{secAcc}%</span>
                 </div>
                 <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden my-2">
                   <div 
@@ -150,8 +213,8 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>{stats.correct} / {stats.total} correct</span>
-                  <span>{stats.marks} pts</span>
+                  <span>{stats.correct} / {stats.total} Solved</span>
+                  <span className="font-semibold text-slate-200">+{stats.marks} Marks</span>
                 </div>
               </div>
             );
@@ -159,37 +222,52 @@ export const ResultAnalytics: React.FC<ResultAnalyticsProps> = ({
         </div>
       </div>
 
-      {/* 3. Detailed Question Review List */}
+      {/* 4. Detailed Question-by-Question Solution Review */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-emerald-400" /> Step-by-Step Question Review & AI Explanations
-          </h3>
+          <div>
+            <h3 className="text-lg font-black text-white">Step-by-Step Question Review</h3>
+            <p className="text-xs text-slate-400">Inspect full solutions, correct options, and ask the AI Coach doubts</p>
+          </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {[
-              { id: 'all', label: `All (${questions.length})` },
-              { id: 'incorrect', label: `Incorrect (${result.incorrectCount})` },
-              { id: 'correct', label: `Correct (${result.correctCount})` },
-              { id: 'achievers', label: `Achievers Section` },
-            ].map(f => (
-              <button
-                key={f.id}
-                onClick={() => { playClickSound(); setReviewFilter(f.id as any); }}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                  reviewFilter === f.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-850 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs">
+            <button
+              onClick={() => { playClickSound(); setReviewFilter('all'); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                reviewFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All ({questions.length})
+            </button>
+            <button
+              onClick={() => { playClickSound(); setReviewFilter('incorrect'); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                reviewFilter === 'incorrect' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Incorrect ({result.incorrectCount})
+            </button>
+            <button
+              onClick={() => { playClickSound(); setReviewFilter('correct'); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                reviewFilter === 'correct' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Correct ({result.correctCount})
+            </button>
+            <button
+              onClick={() => { playClickSound(); setReviewFilter('achievers'); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                reviewFilter === 'achievers' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Achievers HOTS
+            </button>
           </div>
         </div>
 
-        {/* Questions list */}
+        {/* Question Cards List */}
         <div className="space-y-4">
           {filteredQuestions.map(({ q, originalIdx, userChoice, isCorrect, isAnswered }) => (
             <div

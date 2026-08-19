@@ -4,40 +4,48 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        olympiad: {
-          imo: { DEFAULT: '#3B82F6', light: '#DBEAFE', dark: '#1E40AF' },
-          iso: { DEFAULT: '#10B981', light: '#D1FAE5', dark: '#065F46' },
-          icso: { DEFAULT: '#8B5CF6', light: '#EDE9FE', dark: '#5B21B6' },
-          ieo: { DEFAULT: '#F59E0B', light: '#FEF3C7', dark: '#92400E' },
-          igko: { DEFAULT: '#EC4899', light: '#FCE7F3', dark: '#9D174D' },
-          isso: { DEFAULT: '#06B6D4', light: '#CFFAFE', dark: '#155E75' },
+        ink: {
+          DEFAULT: '#151d44',
+          2: '#273364',
+          dark: '#0e1430',
+          muted: '#536087'
         },
-        space: {
-          900: '#0B0F19',
-          800: '#111827',
-          700: '#1F2937',
-          600: '#374151',
+        cream: {
+          DEFAULT: '#fffdf8',
+          paper: '#fff8ee',
+          darker: '#f5f0e6'
+        },
+        sun: '#ffd93e',
+        mint: '#a7ead1',
+        lilac: '#d8c8ff',
+        coral: '#ff795f',
+        sky: '#c6dcff',
+        line: '#d9d9e7',
+        brand: {
+          imo: '#ffd93e',
+          iso: '#a7ead1',
+          icso: '#c6dcff',
+          ieo: '#d8c8ff',
+          igko: '#ff795f',
+          isso: '#ffe0a3'
         }
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
-        comic: ['Fredoka', 'Comic Sans MS', 'cursive'],
+        serif: ['Georgia', 'Times New Roman', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        display: ['Fredoka', 'system-ui', 'sans-serif']
       },
-      animation: {
-        'bounce-slow': 'bounce 3s infinite',
-        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'float': 'float 3s ease-in-out infinite',
-      },
-      keyframes: {
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-8px)' },
-        }
+      boxShadow: {
+        'ink-sm': '0 3px 0 #151d44',
+        'ink': '0 5px 0 #0a1031',
+        'ink-lg': '5px 6px 0 #151d44',
+        'flat-yellow': '4px 4px 0 #f5b700',
+        'flat-coral': '4px 4px 0 #d94f34',
+        'flat-mint': '4px 4px 0 #57b897'
       }
     },
   },

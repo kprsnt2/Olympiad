@@ -1,11 +1,125 @@
-﻿@tailwind base;
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import "katex/dist/katex.min.css";
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply font-sans;
-  }
+:root {
+  --ink: #151d44;
+  --ink-2: #273364;
+  --cream: #fffdf8;
+  --paper: #fff8ee;
+  --yellow: #ffd93e;
+  --red: #ff795f;
+  --pink: #ffb4ce;
+  --mint: #a7ead1;
+  --blue: #c6dcff;
+  --line: #d9d9e7;
+  --serif: Georgia, 'Times New Roman', serif;
+  --sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Typography & Serif Accents */
+.font-serif-accent {
+  font-family: var(--serif);
+  font-style: italic;
+}
+
+.brand {
+  font-weight: 900;
+  font-size: 26px;
+  letter-spacing: -1.5px;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand-star {
+  display: inline-block;
+  font-size: 20px;
+  color: #fb6b61;
+  margin-right: 3px;
+  transform: translateY(-2px) rotate(8deg);
+}
+
+.brand-dot {
+  color: #fb6b61;
+}
+
+/* Solid ink buttons with retro flat drop shadows */
+.btn-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--ink);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 13px 20px;
+  box-shadow: 0 5px 0 #0a1031;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 2px solid var(--ink);
+}
+
+.btn-ink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #0a1031;
+}
+
+.btn-ink:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #0a1031;
+}
+
+.btn-white {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 13px 20px;
+  box-shadow: 0 4px 0 rgba(21, 29, 68, 0.18);
+  border: 2px solid var(--ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-white:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 rgba(21, 29, 68, 0.22);
+}
+
+/* Floating Sticker Cards */
+.float-card {
+  position: absolute;
+  z-index: 4;
+  background: #ffffff;
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 5px 6px 0 var(--ink);
+  font-weight: 800;
 }
 
 /* Custom Scrollbar */
@@ -13,78 +127,28 @@
   width: 8px;
   height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #f0edf7;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.4);
-  border-radius: 4px;
+  background: #c3c8dd;
+  border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
+  background: #99a2c7;
 }
 
-/* Glassmorphism Classes */
-.glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card-hover:hover {
-  transform: translateY(-3px);
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 12px 30px -10px rgba(99, 102, 241, 0.25);
-}
-
-.glow-purple {
-  box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.3);
-}
-
-.glow-blue {
-  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.3);
-}
-
-.glow-green {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.3);
-}
-
-.glow-amber {
-  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.3);
-}
-
-/* Print Styles for Worksheets and OMR Answer Sheets */
+/* Print Styles */
 @media print {
   body {
     background: #ffffff !important;
-    color: #111827 !important;
+    color: #000000 !important;
   }
-  
   .no-print {
     display: none !important;
   }
-  
-  .print-only {
-    display: block !important;
-  }
-  
-  .glass-card {
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-    backdrop-filter: none !important;
-    box-shadow: none !important;
-    color: #111827 !important;
-  }
-
-  .print-page-break {
-    page-break-after: always;
+  .printable-area {
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
