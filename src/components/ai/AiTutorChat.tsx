@@ -1,5 +1,5 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
-import { Send, Brain, Sparkles, User, RefreshCw, Volume2, HelpCircle, Key, Lightbulb } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Brain, Sparkles, User, RefreshCw, Volume2, HelpCircle, Lightbulb } from 'lucide-react';
 import { Question, AIChatMessage } from '../../types/olympiad';
 import { askAiCoach } from '../../services/aiService';
 import { speakQuestionText, playSuccessSound, playClickSound } from '../../services/audioService';
@@ -7,10 +7,9 @@ import { RichMathText } from '../common/LatexRenderer';
 
 interface AiTutorChatProps {
   initialQuestion?: Question | null;
-  onOpenSettings: () => void;
 }
 
-export const AiTutorChat: React.FC<AiTutorChatProps> = ({ initialQuestion, onOpenSettings }) => {
+export const AiTutorChat: React.FC<AiTutorChatProps> = ({ initialQuestion }) => {
   const [messages, setMessages] = useState<AIChatMessage[]>([
     {
       id: 'welcome',
@@ -68,10 +67,10 @@ export const AiTutorChat: React.FC<AiTutorChatProps> = ({ initialQuestion, onOpe
         {
           id: `ai-err-${Date.now()}`,
           sender: 'ai',
-          text: `Oops! Couldn't reach the model: ${errMsg}. Using built-in offline explanation:\n\n${q.explanation}`,
+          text: `Connection note: ${errMsg}. Let's break this down logically! Think about the core formulas and given values.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           providerUsed: 'offline',
-          modelUsed: 'Offline Engine'
+          modelUsed: 'Offline Fallback'
         }
       ]);
     } finally {
@@ -79,8 +78,8 @@ export const AiTutorChat: React.FC<AiTutorChatProps> = ({ initialQuestion, onOpe
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!inputQuery.trim() || loading) return;
 
     playClickSound();
@@ -158,131 +157,135 @@ export const AiTutorChat: React.FC<AiTutorChatProps> = ({ initialQuestion, onOpe
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-white text-base">Olympiad AI Coach</h3>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                OpenAI + Gemini Failover
+                OpenAI + Gemini Dual Engine
               </span>
             </div>
             <p className="text-xs text-slate-400">Step-by-step Socratic hints & concept explanations</p>
           </div>
         </div>
-
-        <button
-          onClick={() => { playClickSound(); onOpenSettings(); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors"
-        >
-          <Key className="w-3.5 h-3.5 text-indigo-400" />
-          <span>API Keys</span>
-        </button>
       </div>
 
       {/* Active Question Pin Banner (if any) */}
       {activeQuestion && (
         <div className="px-6 py-2.5 bg-indigo-950/60 border-b border-indigo-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-indigo-200">
-            <span className="font-bold text-indigo-400">{activeQuestion.examId} Q:</span>
-            <span className="truncate max-w-md">{activeQuestion.questionText}</span>
+            <span className="px-2 py-0.5 rounded-md bg-indigo-500/30 font-bold text-[10px] uppercase">
+              {activeQuestion.examId} • Grade {activeQuestion.grade}
+            </span>
+            <span className="font-medium truncate max-w-md">
+              Focus: {activeQuestion.chapter}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400">Hints:</span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-400 font-semibold">3-Step Socratic Ladder:</span>
             <button
               onClick={() => requestHintLadder(1)}
-              className="px-2 py-0.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold text-[11px] transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-bold border border-slate-700 transition-colors"
             >
-              Hint 1
+              Clue 1
             </button>
             <button
               onClick={() => requestHintLadder(2)}
-              className="px-2 py-0.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-bold text-[11px] transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] font-bold border border-slate-700 transition-colors"
             >
-              Hint 2
+              Step 2
             </button>
             <button
               onClick={() => requestHintLadder(3)}
-              className="px-2 py-0.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 font-bold text-[11px] transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-pink-300 text-[10px] font-bold border border-slate-700 transition-colors"
             >
-              Hint 3
+              Solve 3
+            </button>
+            <button
+              onClick={() => setActiveQuestion(null)}
+              className="text-[10px] text-slate-400 hover:text-white underline ml-1"
+            >
+              Clear
             </button>
           </div>
         </div>
       )}
 
-      {/* Chat Messages List */}
+      {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.sender === 'ai' && (
-              <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-sm shrink-0 mt-1">
-                🤖
-              </div>
-            )}
-
-            <div className={`max-w-[80%] rounded-3xl p-4 space-y-1.5 shadow-md ${
-              msg.sender === 'user'
-                ? 'bg-indigo-600 text-white rounded-br-none'
-                : 'bg-slate-800/90 text-slate-100 border border-slate-700/80 rounded-bl-none'
-            }`}>
-              <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
-                <RichMathText text={msg.text} />
+        {messages.map(m => {
+          const isAi = m.sender === 'ai';
+          return (
+            <div
+              key={m.id}
+              className={`flex items-start gap-3 ${isAi ? '' : 'flex-row-reverse'}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
+                  isAi
+                    ? 'bg-gradient-to-tr from-indigo-600 to-pink-600 text-white shadow-md'
+                    : 'bg-slate-700 text-white'
+                }`}
+              >
+                {isAi ? '🤖' : '👤'}
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-1 text-[10px] text-slate-400">
-                <span>{msg.timestamp}</span>
-                {msg.sender === 'ai' && (
-                  <div className="flex items-center gap-2">
-                    {msg.providerUsed && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400">
-                        {msg.modelUsed || msg.providerUsed}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => speakQuestionText(msg.text)}
-                      className="hover:text-white transition-colors"
-                      title="Read Aloud"
-                    >
-                      <Volume2 className="w-3.5 h-3.5 text-indigo-300" />
-                    </button>
-                  </div>
-                )}
+              <div
+                className={`max-w-[80%] rounded-2xl p-4 space-y-1 text-xs sm:text-sm leading-relaxed ${
+                  isAi
+                    ? 'bg-slate-800/90 text-slate-100 border border-slate-700 shadow-md'
+                    : 'bg-indigo-600 text-white ml-auto'
+                }`}
+              >
+                <div className="prose prose-invert max-w-none text-xs sm:text-sm">
+                  <RichMathText text={m.text} />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 text-[10px] text-slate-400 border-t border-slate-700/50">
+                  <span>{m.timestamp}</span>
+                  {isAi && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 font-mono text-[9px]">{m.modelUsed || 'AI Engine'}</span>
+                      <button
+                        onClick={() => speakQuestionText(m.text)}
+                        className="hover:text-white transition-colors"
+                        title="Read aloud"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            {msg.sender === 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-sm shrink-0 mt-1">
-                <User className="w-4 h-4 text-purple-300" />
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {loading && (
-          <div className="flex gap-3 justify-start items-center text-xs text-slate-400 animate-pulse">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
-              <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-pink-600 flex items-center justify-center text-xs">
+              🤖
             </div>
-            <span>Olympiad Coach is thinking & checking with failover router...</span>
+            <div className="p-4 rounded-2xl bg-slate-800 text-xs text-slate-300 flex items-center gap-2 border border-slate-700 animate-pulse">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <span>Coach is formulating step-by-step guidance...</span>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Form */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+      {/* Input Box */}
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center gap-2">
         <input
           type="text"
-          placeholder="Ask any Olympiad doubt, formula question, or logic pattern..."
           value={inputQuery}
           onChange={e => setInputQuery(e.target.value)}
-          className="flex-1 px-4 py-3 rounded-2xl bg-slate-800 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          placeholder="Ask any math trick, science concept, formula, or type a doubt..."
+          className="flex-1 px-4 py-3 rounded-2xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
         />
         <button
           type="submit"
           disabled={!inputQuery.trim() || loading}
-          className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md transition-all hover:scale-105 disabled:opacity-50 flex items-center gap-1.5"
+          className="p-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors disabled:opacity-40"
         >
           <Send className="w-4 h-4" />
-          <span className="hidden sm:inline">Ask Coach</span>
         </button>
       </form>
     </div>

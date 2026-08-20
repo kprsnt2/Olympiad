@@ -20,13 +20,11 @@ import { WorksheetsHub } from './components/worksheets/WorksheetsHub';
 import { FormulaSheets } from './components/sheets/FormulaSheets';
 import { AiTutorChat } from './components/ai/AiTutorChat';
 import { AiQuestionGenerator } from './components/ai/AiQuestionGenerator';
-import { ApiKeyModal } from './components/common/ApiKeyModal';
 import { playClickSound } from './services/audioService';
 
 export const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile>(loadUserProfile());
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTest, setActiveTest] = useState<MockTest | null>(null);
   const [lastResult, setLastResult] = useState<TestAttemptResult | null>(null);
   const [aiFocusQuestion, setAiFocusQuestion] = useState<Question | null>(null);
@@ -163,7 +161,6 @@ export const App: React.FC = () => {
         }}
         userProfile={userProfile}
         onGradeChange={handleGradeChange}
-        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Main Content Container */}
@@ -358,7 +355,6 @@ export const App: React.FC = () => {
             </div>
             <AiTutorChat
               initialQuestion={aiFocusQuestion}
-              onOpenSettings={() => setIsSettingsOpen(true)}
             />
           </div>
         )}
@@ -420,12 +416,6 @@ export const App: React.FC = () => {
 
       {/* Footer */}
       <Footer />
-
-      {/* API Key / Settings Modal */}
-      <ApiKeyModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
     </div>
   );
 };

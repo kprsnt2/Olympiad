@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GradeLevel, UserProfile } from '../../types/olympiad';
-import { Sparkles, Flame, Volume2, VolumeX, Settings, Award } from 'lucide-react';
+import { Sparkles, Flame, Volume2, VolumeX } from 'lucide-react';
 import { toggleMute, isAudioMuted, playClickSound } from '../../services/audioService';
 
 interface NavbarProps {
@@ -8,15 +8,13 @@ interface NavbarProps {
   onSelectTab: (tab: string) => void;
   userProfile: UserProfile;
   onGradeChange: (grade: GradeLevel) => void;
-  onOpenSettings: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   onSelectTab,
   userProfile,
-  onGradeChange,
-  onOpenSettings
+  onGradeChange
 }) => {
   const [muted, setMuted] = useState(isAudioMuted());
 
@@ -109,15 +107,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             title={muted ? 'Unmute Audio' : 'Mute Audio'}
           >
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-ink" />}
-          </button>
-
-          {/* Settings / API Key Dialog */}
-          <button
-            onClick={() => { playClickSound(); onOpenSettings(); }}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-[#f0edf7] transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
           </button>
 
           {/* User Avatar */}
