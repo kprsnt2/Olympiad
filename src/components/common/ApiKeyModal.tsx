@@ -127,7 +127,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onCon
               <span className="text-sm font-semibold text-white flex items-center gap-2">
                 <span className="text-base">🔵</span> Google Gemini (Backup & Fallback)
               </span>
-              <span className="text-[11px] text-slate-400">gemini-flash-latest / 2.5-flash-lite</span>
+              <span className="text-[11px] font-mono text-indigo-400">gemini-flash-latest</span>
             </div>
 
             <div>

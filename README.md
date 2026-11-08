@@ -23,7 +23,7 @@ Every year, millions of students across the globe participate in prestigious SOF
 ### Our Solution
 **OlympiadQuest** transforms Olympiad preparation into an exciting, space-themed learning quest:
 - **Zero-Latency Instant Learning**: Hundreds of high-quality questions, chapter guides, 2020–2025 previous year papers, and formula sheets are pre-loaded to work instantly offline.
-- **On-Demand Dual-Model AI Mentorship**: Integrates **OpenAI** (`gpt-5.4-mini` / `gpt-5.4-nano`) as primary and **Google Gemini** (`gemini-flash-latest` / `gemini-2.5-flash-lite`) as automatic fallback to provide a **3-Step Socratic Hint Ladder** and infinite dynamic question generation.
+- **On-Demand Dual-Model AI Mentorship**: Integrates **OpenAI** (`gpt-5.4-mini` / `gpt-5.4-nano`) as primary and **Google Gemini** (`gemini-flash-latest` / `gemini-flash-lite-latest`) as automatic fallback to provide a **3-Step Socratic Hint Ladder** and infinite dynamic question generation.
 - **True-to-Life Simulation**: Features authentic 60-minute timed mock tests, digital rough-work scratchpads, and printable OMR bubble worksheets for physical practice.
 
 ---
@@ -77,7 +77,7 @@ Every year, millions of students across the globe participate in prestigious SOF
 ### 6. 🤖 Dual-Engine AI Olympiad Coach
 - **Dual-Model Failover Router**:
   - Primary: **OpenAI** (`gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-4o-mini`, customizable)
-  - Backup: **Google Gemini** (`gemini-flash-latest`, `gemini-2.5-flash-lite`, customizable)
+  - Backup: **Google Gemini** (`gemini-flash-latest`, `gemini-flash-lite-latest`, customizable)
   - Smart Offline Fallback: High-fidelity built-in engine if API keys are not entered.
 - **3-Step Socratic Hint Ladder**:
   1. *Hint 1 (Clue)*: Points out the core principle without giving away the answer.
